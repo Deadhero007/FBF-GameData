@@ -1,4 +1,11 @@
 /* Libraries */
+
+/* TOWER KI */
+//! import "src\Libraries\Table.j"
+//! import "src\Libraries\GetUnitCollision.j"
+//! import "src\AI-Systems\AI-Tower.j"
+
+/*
 //! import "src\Libraries\InvulnerabilityDetector.j"
 //! import "src\Libraries\LocalEffects.j"
 //! import "src\Libraries\FriendlyAttackSystem.j"
@@ -422,3 +429,5 @@
 //! import "src\Heroes\OgreWarrior\Decapitate.j"
 //! import "src\Heroes\OgreWarrior\MightySwing.j"
 //! import "src\Heroes\OgreWarrior\Consumption.j"
+
+*/

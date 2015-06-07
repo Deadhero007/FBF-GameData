@@ -1,51 +1,90 @@
 scope AITower
+    globals
+        private constant integer ACOLYTE_I_ID = 'u00Q'
+        private constant integer ACOLYTE_II_ID = 'u008'
+        private constant integer ACOLYTE_III_ID = 'u006'
+        private constant integer SELL = 'n005'
+        private constant integer MAX_TOWERS = 33
+
+        private hashtable TOWER_DATA = InitHashtable()
+        private unit array ACOLYTS
+        private real array START_POS_X
+        private real array START_POS_Y
+
+        // It is the periodic time (seconds) which the group will be refreshed (ghost units are removed)
+        private constant real TIME_OUT = 30.0
+        private group BEING_BUILT_UNITS
+        private group BEING_UPGRADE_UNITS
+
+        private constant integer MAX_NON_TOWER_AREAS = 10 //Anzahl der Gebiete wo keine T?rme gebaut werden d?rfen
+        private rect array NON_TOWER_RECTS
+        private TowerSystemAI TOWER_BUILD_AI
+    endglobals
+
     struct Builder
-        globals
-            private constant integer ACOLYTE_I_ID = 'u00Q'
-            private constant integer ACOLYTE_II_ID = 'u008'
-            private constant integer ACOLYTE_III_ID = 'u006'
-            private constant integer SELL = 'n005'
-            private constant integer MAX_TOWERS = 33
-
-            private hashtable TOWER_DATA = InitHashtable()
-            private unit array ACOLYTS
-            private real array START_POS_X
-            private real array START_POS_Y
-
-            // It is the periodic time (seconds) which the group will be refreshed (ghost units are removed)
-            private constant real TIME_OUT = 30.0
-            private group BEING_BUILT_UNITS
-            private group BEING_UPGRADE_UNITS
-
-            private constant integer MAX_NON_TOWER_AREAS = 10 //Anzahl der Gebiete wo keine T?rme gebaut werden d?rfen
-            private rect array NON_TOWER_RECTS
-            private TowerSystemAI TOWER_BUILD_AI
-        endglobals
-
         static method onInit takes nothing returns nothing
+            local integer i = 0
+            local timer t = CreateTimer()
+            local timer tAI = CreateTimer()
+            local trigger t1 = CreateTrigger()
+            local trigger t2 = CreateTrigger()
+            local trigger t3 = CreateTrigger()
+            local trigger t4 = CreateTrigger()
+            local trigger t5 = CreateTrigger()
+            local trigger t6 = CreateTrigger()
+
+
             local trigger towerAITrigger = CreateTrigger()
 
             call TriggerRegisterPlayerChatEvent( towerAITrigger, Player(0), "stop", true )
             call TriggerAddAction( towerAITrigger, function thistype.buildTowerAI )
 
-            set TOWER_BUILD_AI = TowerSystemAI.create()
-
-            call TimerStart(t, TIME_OUT, true, function RefreshGroup)
             call TimerStart(tAI, 10.0, false, function thistype.initTowerAI)
-            //@TODO: Richtig umbauen, aktuell nur zum Testen!
-            call TOWER_BUILD_AI.generateBuildPositions(gg_rct_tower_left_top, GetRectCenterX(gg_rct_tower_left_top) + 200, 50, 0)
-            call TOWER_BUILD_AI.buildNext(ACOLYTS[0], 0)
 
+            //Register Tower Events for Player 1-6
+            loop
+                exitwhen i > 5
+                    call TriggerRegisterPlayerUnitEvent(t1, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_START, null)
+                    call TriggerRegisterPlayerUnitEvent(t2, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_FINISH, null)
+                    call TriggerRegisterPlayerUnitEvent(t3, Player(i), EVENT_PLAYER_UNIT_UPGRADE_START, null)
+                    call TriggerRegisterPlayerUnitEvent(t4, Player(i), EVENT_PLAYER_UNIT_UPGRADE_FINISH, null)
+                    call TriggerRegisterPlayerUnitEvent(t5, Player(i), EVENT_PLAYER_UNIT_UPGRADE_CANCEL, null)
+                    call TriggerRegisterPlayerUnitEvent(t6, Player(i), EVENT_PLAYER_UNIT_TRAIN_FINISH, null)
+                set i = i + 1
+            endloop
+            /*
+            call TriggerAddCondition(t1, Filter(c1))
+            call TriggerAddCondition(t2, Filter(c2))
+            call TriggerAddCondition(t3, Filter(c3))
+            call TriggerAddCondition(t4, Filter(c4))
+            call TriggerAddCondition(t5, Filter(c5))
+            call TriggerAddCondition(t6, Filter(c6))
+            */
+            set t1 = null
+            set t2 = null
+            set t3 = null
+            set t4 = null
+            set t5 = null
+            set t6 = null
+            /*
+            set c1 = null
+            set c2 = null
+            set c3 = null
+            set c4 = null
+            set c5 = null
+            set c6 = null
+            */
+            set t = null
             set tAI = null
             set towerAITrigger = null
         endmethod
 
         public static method initTowerAI takes nothing returns nothing
             set TOWER_BUILD_AI = TowerSystemAI.create()
-            set ACOLYTS[0] = CreateUnit(Player(0), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_tower_left_top)), R2I(GetRectCenterY(gg_rct_tower_left_top)), bj_UNIT_FACING)
+            set ACOLYTS[0] = CreateUnit(Player(0), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
 
-            //@TODO: Richtig umbauen, aktuell nur zum Testen!
-            call TOWER_BUILD_AI.generateBuildPositions(gg_rct_tower_left_top, GetRectCenterX(gg_rct_tower_left_top_end), 3, 0, ACOLYTS[0])
+            //@TODO: Currently only to test must change!
+            call TOWER_BUILD_AI.generateBuildPositions(gg_rct_TowersTopLeftTop, GetRectCenterX(gg_rct_TowersTopLeftTop), 3, 0, ACOLYTS[0])
 //            call TOWER_BUILD_AI.buildNext(ACOLYTS[0], 0)
         endmethod
 
