@@ -114,6 +114,10 @@ scope Game
         static method updatePlayerCount takes nothing returns nothing
             set .playerCount = .playerCount - 1
         endmethod
+		
+		/*
+		 * PLAYER GOLD
+		 */
         
         //add Gold to a specific Player
         static method playerAddGold takes integer pid, integer goldAdd returns nothing
@@ -121,20 +125,19 @@ scope Game
                 call SetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_GOLD) + goldAdd)
             endif
         endmethod
-        
-        //add Lumber to a specific Player
-        static method playerAddLumber takes integer pid, integer lumberAdd returns nothing
-            if lumberAdd > 0 then
-                call SetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_LUMBER) + lumberAdd)
-            endif
-        endmethod
-        
-        //remove Gold to a specific Player
+		
+		//remove Gold to a specific Player
         static method playerRemoveGold takes integer pid, integer goldRemove returns nothing
             call SetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_GOLD, GetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_GOLD) - goldRemove)
         endmethod
-        
-        static method getPlayerStartGold takes player p returns integer
+		
+		//get current gold from a specific Player
+        static method getPlayerGold takes integer pid returns integer
+            return GetPlayerState(Player(pid), PLAYER_STATE_RESOURCE_GOLD)
+        endmethod
+		
+		//get player start gold
+		static method getPlayerStartGold takes player p returns integer
             local integer gold = 0
             
             if ( GetPlayerRace(p) == RACE_UNDEAD ) then
@@ -144,7 +147,24 @@ scope Game
             endif
             return gold
         endmethod
+		
+		/*
+		 * PLAYER LUMBER
+		 */
+		 
+		//add Lumber to a specific Player
+        static method playerAddLumber takes integer pid, integer lumberAdd returns nothing
+            if lumberAdd > 0 then
+                call SetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_LUMBER, GetPlayerState(.players[pid], PLAYER_STATE_RESOURCE_LUMBER) + lumberAdd)
+            endif
+        endmethod
         
+        //get current lumber from a specific Player
+        static method getPlayerLumber takes integer pid returns integer
+            return GetPlayerState(Player(pid), PLAYER_STATE_RESOURCE_LUMBER)
+        endmethod
+        
+		//get player start lumber
         static method getPlayerStartLumber takes player p returns integer
             if ( GetPlayerRace(p) == RACE_UNDEAD ) then
                 return BaseGoldSystem.START_LUMBER_FORSAKEN
@@ -215,6 +235,25 @@ scope Game
             
             return level
         endmethod
+		
+		//get player ai difficult
+		// -1 == real player
+		// 0 == newbie
+		// 1 == normal
+		// 2 == insane
+		static method getAIDifficulty takes integer pid returns integer
+			if (not .isRealPlayer(pid)) then  
+				if GetAIDifficulty(Player(pid)) == AI_DIFFICULTY_NEWBIE then
+					return 0
+				elseif GetAIDifficulty(Player(pid)) == AI_DIFFICULTY_NORMAL then
+					return 1
+				else
+					return 2
+				endif
+			else
+				return -1
+			endif
+		endmethod
         
         //*****************************************************\\
         //*************** END OF CONFIGURATION*****************\\
@@ -394,7 +433,7 @@ scope Game
 						call FBFMultiboard.onUpdateStatus(pidKilled, killedUnit)
 						
 						//Revive the killed Hero
-						call HeroRespawn.reviveHero(killedUnit, 0., true)
+						call HeroRespawn.create(killedUnit, true)
 					endif
 					//Ist der Killer ein Held und gehoert einem Spieler?
 					if IsUnitType(killingUnit, UNIT_TYPE_HERO) then
@@ -470,8 +509,8 @@ scope Game
             //Setting Player Datas
             loop
                 exitwhen i >= bj_MAX_PLAYERS
-                set .isBot[i] = false
-                //Checking for Players and Bots
+                
+				//Checking for Players and Bots
                 if isPlayerInGame(i) then
                     set .players[i] = Player(i)
                     
@@ -499,6 +538,8 @@ scope Game
 					//only count if it's a real player
                     if isRealPlayer(i) then
 						set .playerCount = .playerCount + 1
+					else
+						set .isBot[i] = true
 					endif
                 endif
                 set i = i + 1
