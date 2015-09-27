@@ -1,3 +1,4 @@
+
 scope AITower
     globals
         private constant integer ACOLYTE_I_ID = 'u00Q'
@@ -30,92 +31,30 @@ scope AITower
 
     struct Builder
         static method onInit takes nothing returns nothing
-            local integer i = 0
-            local timer t = CreateTimer()
             local timer tAI = CreateTimer()
-            local trigger t1 = CreateTrigger()
-            local trigger t2 = CreateTrigger()
-            local trigger t3 = CreateTrigger()
-            local trigger t4 = CreateTrigger()
-            local trigger t5 = CreateTrigger()
-            local trigger t6 = CreateTrigger()
-
             local trigger towerAITrigger = CreateTrigger()
-            
-            
-            call TriggerRegisterPlayerChatEvent( towerAITrigger, Player(0), "stop", true )
             call TriggerAddAction( towerAITrigger, function thistype.buildTowerAI )
 
             call TimerStart(tAI, 3.0, false, function thistype.initTowerAI)
-            //Register Tower Events for Player 1-6
-            loop
-                exitwhen i > 5
-                
-                call TriggerRegisterPlayerUnitEvent(t1, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_START, null)
-                call TriggerRegisterPlayerUnitEvent(t2, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_FINISH, null)
-                call TriggerRegisterPlayerUnitEvent(t3, Player(i), EVENT_PLAYER_UNIT_UPGRADE_START, null)
-                call TriggerRegisterPlayerUnitEvent(t4, Player(i), EVENT_PLAYER_UNIT_UPGRADE_FINISH, null)
-                call TriggerRegisterPlayerUnitEvent(t5, Player(i), EVENT_PLAYER_UNIT_UPGRADE_CANCEL, null)
-                call TriggerRegisterPlayerUnitEvent(t6, Player(i), EVENT_PLAYER_UNIT_TRAIN_FINISH, null)
-                call Game.setPlayerLumber(i, 500)
-                call Game.getPlayerLumber(i)
-                set i = i + 1
-            endloop
-            /*
-            call TriggerAddCondition(t1, Filter(c1))
-            call TriggerAddCondition(t2, Filter(c2))
-            call TriggerAddCondition(t3, Filter(c3))
-            call TriggerAddCondition(t4, Filter(c4))
-            call TriggerAddCondition(t5, Filter(c5))
-            call TriggerAddCondition(t6, Filter(c6))
-            */
-            set t1 = null
-            set t2 = null
-            set t3 = null
-            set t4 = null
-            set t5 = null
-            set t6 = null
-            /*
-            set c1 = null
-            set c2 = null
-            set c3 = null
-            set c4 = null
-            set c5 = null
-            set c6 = null
-            */
-            set t = null
             set tAI = null
             set towerAITrigger = null
         endmethod
 
         public static method initTowerAI takes nothing returns nothing
         	local TowerBuildAI towerBuild
-//        	local integer position = 0
-//        	local rect array rectangle
         	
             set towerBuildAI = TowerSystemAI.create()
             call towerBuildAI.initTowerBuildAI()
-/*            loop
-            	exitwhen position == 6
-            	set position = position + 1
-            endloop
-            
-            	set position = 0
-            loop
-            
-                exitwhen position == 11
-                    call Game.setPlayerLumber(position, 500)
-                call BJDebugMsg(I2S(Game.getPlayerLumber(position)))
-                	set position = position + 1
-            
-            endloop
-*/          
             set ACOLYTS[0] = CreateUnit(Player(0), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
+            set ACOLYTS[1] = CreateUnit(Player(1), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
+            set ACOLYTS[2] = CreateUnit(Player(2), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
             call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_LEFT).setBuilder(ACOLYTS[0])
+//                        call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_RIGHT).setBuilder(ACOLYTS[1])
+//                                    call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_LEFT).setBuilder(ACOLYTS[2])
 
             //@TODO: Currently only to test must change!
 //            call towerBuildAI.generateBuildPositions(gg_rct_TowersTopLeftTop, 3, 0, ACOLYTS[0])
-            call towerBuildAI.buildNext()
+            call towerBuildAI.buildStart()
         endmethod
 
         public static method buildTowerAI takes nothing returns nothing
@@ -195,15 +134,15 @@ scope AITower
 		 * the buildings that can build by cpu. more unique tower is the chance higher that build at next
 		 * @var integer
 		 */
-		private integer array buildings[60]
-		private integer buildingPosition
+		private integer array buildings[20]
+		private integer buildingPosition = 0
 		
 		/**
 		 * add an building to the "can build"
 		 * @param integer building
 		 */
 		public method addBuilding takes integer building returns nothing
-			if .buildingPosition < 60 then
+			if .buildingPosition < 20 then
 			    set .buildings[.buildingPosition] = building
 			    set .buildingPosition = .buildingPosition + 1
 		    endif
@@ -214,9 +153,7 @@ scope AITower
 		 * @return integer
 		 */
 		public method getRandomBuilding takes nothing returns integer
-		    local integer random = 0
-		    set random = GetRandomInt(0, 60)
-		    return .buildings[random]
+		    return .buildings[GetRandomInt(0, 20)]
 		endmethod
 		
 		/**
@@ -225,12 +162,90 @@ scope AITower
 		public method resetBuildings takes nothing returns nothing
 			local integer building
 			loop
-			    exitwhen building == 60
 			    set .buildings[building] = 0
 				set building = building + 1
+			    exitwhen building == 20
 			endloop
 			set .buildingPosition = 0
 		endmethod
+	endstruct
+	
+	/**
+	 * the towers
+	 */
+	struct Tower
+	    public integer towerTypeId
+	    private Tower parentTower
+	    private Tower childTower
+	    private boolean childTowerExists = false
+		private boolean parentTowerExists = false	    
+	    public integer cost
+
+		/**
+		 * set the child tower
+		 * @param Towe childTower
+		 */
+		public method setChildTower takes Tower childTower returns nothing
+			set .childTowerExists = true
+			set .childTower = childTower
+			if childTower.hasParentTower() == false then
+				call childTower.setParentTower(this)
+			endif
+		endmethod
+
+		/**
+		 * set the parent tower
+		 * @param Towe parentTower
+		 */
+		public method setParentTower takes Tower parentTower returns nothing
+			set .parentTower = parentTower
+			set .parentTowerExists = true
+			if parentTower.hasChildTower() == false then
+				call parentTower.setChildTower(this)
+			endif
+		endmethod
+		
+		/**
+		 * has tower an child tower
+		 * @return boolean
+		 */
+		public method hasChildTower takes nothing returns boolean
+			return .childTowerExists
+		endmethod
+		
+		/**
+		 * has tower an parent tower
+		 * @return boolean
+		 */
+		public method hasParentTower takes nothing returns boolean
+			return .parentTowerExists
+		endmethod
+		
+		/**
+		 * gets parent tower
+		 * @return Tower
+		 */
+		public method getParentTower takes nothing returns Tower
+		    return .parentTower
+		endmethod
+		
+		/**
+		 * gets child tower
+		 * @return Tower
+		 */
+		public method getChildTower takes nothing returns Tower
+			return .childTower
+		endmethod
+	    /**
+	     * search towerTypeId in the tower
+	     * @param integer towerTypeId
+	     * @return boolean
+	     */
+	    public method hasTowerId takes integer towerTypeId returns boolean
+			local boolean childTowerHasType
+			set childTowerHasType = .childTowerExists == true and .childTower.hasTowerId(towerTypeId) 
+	    	return .towerTypeId == towerTypeId or childTowerHasType
+	    endmethod
 	endstruct
 
     /**
@@ -240,6 +255,8 @@ scope AITower
         private static integer MAX_REGIONS = 3
         private static integer TOWER_WIDTH = 0
         private static integer TOWER_HEIGHT = 1
+        public static integer SLEEP_BEFORE_BUILD = 1
+        public static integer SLEEP_BEFORE_UPGRADE = 2
         
 		private rect array rectangles[3]        
         private real array positionLeft[3]
@@ -248,6 +265,7 @@ scope AITower
         private real array positionBottom[3]
         private TowerPosition array towerPositions[3]
         private unit array tower[60]
+        private integer towerKey
         private TowerBuildConfig config
         
         private boolean leftToRight = false
@@ -261,6 +279,13 @@ scope AITower
         public integer lumber = 0
         public boolean builded = false
         public boolean canBuild = false
+        public unit lastUnit
+        public real array lastPosition[2]
+        public integer array upgradeQueue[5]
+        public boolean upgradeQueueActivate = true
+        public integer playerId
+        public TowerSystemAI systemTower
+        private static TowerBuildAI me
 
 		/**
 		 * sets the builder
@@ -269,9 +294,20 @@ scope AITower
         public method setBuilder takes unit builder returns nothing
             set .builder = builder
             set .enabled = true
+            set thistype.me = this
         endmethod
         
         /**
+         * add tower to array
+         * @param unit tower
+         */
+        public method addTower takes unit tower returns nothing
+        	set .tower[.towerKey] = tower
+        	set .towerKey = .towerKey + 1
+        endmethod
+        
+        /**
+         * set the tower size
          * @param real height
          * @param real width
          */
@@ -312,12 +348,6 @@ scope AITower
          * initialize the positions by settet regions
          */
         public method initPositions takes nothing returns nothing
-/*
-			local real maxSizeX = GetRectMaxX(Rectangle) //right
-			local real maxSizeY = GetRectMaxY(Rectangle) //top
-			local real minSizeX = GetRectMinX(Rectangle) //left
-			local real minSizeY = GetRectMinY(Rectangle) //bottom
-*/
 			local integer currentRegion = 0
 			loop
 				exitwhen currentRegion >= .currentRegion
@@ -341,10 +371,72 @@ scope AITower
 		endmethod
 		
 		/**
+		 * upgrade towers from the queue
+		 * @return boolean
+		 */
+		private method upgradeFirstFromQueue takes nothing returns boolean
+            local integer currentPosition = 10
+            local integer towerTypeId = 0
+            local integer lastTowerTypeId = 0
+            local Tower towerBuild
+            local boolean result = false
+            local Tower lastTowerBuild
+            loop
+            	exitwhen currentPosition < 0
+            	set towerTypeId = .upgradeQueue[currentPosition]
+            	set .upgradeQueue[currentPosition] = lastTowerTypeId
+            	set lastTowerTypeId = towerTypeId
+            	set currentPosition = currentPosition - 1
+            endloop
+            if towerTypeId != 0 then
+                set towerBuild = .systemTower.findTowersById(towerTypeId)
+                set lastTowerBuild = towerBuild
+                loop
+                	if (.getTowerUnitKeyById(towerBuild.towerTypeId) < 60) then
+                        set lastTowerBuild = towerBuild
+                    endif
+                	exitwhen towerBuild.getChildTower().towerTypeId == towerTypeId
+                	set towerBuild = towerBuild.getChildTower()
+                endloop
+				set result = .upgrade(lastTowerBuild.getChildTower())
+				if result == false or towerBuild.towerTypeId != towerTypeId then
+					call .addToUpgradeQueue(towerTypeId)
+				endif
+			endif
+			return result
+		endmethod
+		
+		/**
+		 * add an tower type id to upgrade queue
+		 * @param integer towerTypeid
+		 */
+		private method addToUpgradeQueue takes integer towerTypeId returns nothing
+            local integer currentPosition = 10
+            loop
+            	exitwhen currentPosition == 0 or .upgradeQueue[currentPosition - 1] != 0
+            	set currentPosition = currentPosition - 1
+            endloop
+            if currentPosition < 10 then
+            	set .upgradeQueue[currentPosition] = towerTypeId
+            endif 
+		endmethod
+		
+		/**
+		 * build next unit
+		 * @param Tower tower
+		 * @return boolean
+		 */
+        public method upgrade takes Tower tower returns boolean
+ 			local integer key
+ 			set key = .getTowerUnitKeyById(tower.getParentTower().towerTypeId)
+			return key < 60 and IssueImmediateOrderById(.tower[key], tower.towerTypeId)
+		endmethod
+		/**
 		 * build next unit
 		 * @param integer unitId
+		 * @return boolean
 		 */
-        public method build takes integer unitId returns nothing
+        public method build takes integer unitId returns boolean
  			local real positionY = 0
  			local real positionX = 0
  			local integer currentRegion = 0
@@ -385,40 +477,113 @@ scope AITower
 					endif
 					set builded = IssueBuildOrderById(.builder, unitId, positionX, positionY)
 					
-/*
-call BJDebugMsg(R2S(positionX))
-call BJDebugMsg(R2S(positionY))
-					
-call BJDebugMsg(I2S(count))
-*/
+					if builded then
+						set .lastPosition[0] = positionX
+						set .lastPosition[1] = positionY
+					endif
 					exitwhen builded
-/*
-call BJDebugMsg("y")
-call BJDebugMsg(R2S( .positionLeft[currentRegion]))
-call BJDebugMsg(R2S(positionX))
-call BJDebugMsg(R2S(.positionRight[currentRegion]))
-*/
 					exitwhen positionX < .positionLeft[currentRegion]
 					exitwhen positionX > .positionRight[currentRegion]
-/*
-call BJDebugMsg("x")
-call BJDebugMsg(R2S( .positionTop[currentRegion]))
-call BJDebugMsg(R2S(positionY))
-call BJDebugMsg(R2S(.positionBottom[currentRegion]))
-call BJDebugMsg(I2S(count))
-*/
 					exitwhen positionY > .positionTop[currentRegion]
-//call BJDebugMsg("end2")
 					exitwhen positionY < .positionBottom[currentRegion]
-//call BJDebugMsg("end")
  				endloop
  				exitwhen builded
  				set currentRegion = currentRegion + 1
  			endloop
- 			set .builded = builded
- 			if builded then
-                call BJDebugMsg("Has Builded")
-            endif
+			return builded
+        endmethod
+        
+        /**
+         * get an tower by id
+         * @param integer towerTypeId
+         * @return integer
+         */
+        private method getTowerUnitKeyById takes integer towerTypeId returns integer
+        	local integer currentTowerPosition = 0
+        	loop
+        		exitwhen GetUnitTypeId(.tower[currentTowerPosition]) == towerTypeId
+        		set currentTowerPosition = currentTowerPosition + 1
+        	endloop
+        	return currentTowerPosition
+        endmethod
+        
+    	/**
+    	 * build next tower
+    	 */
+    	public method buildNext takes nothing returns nothing
+            local boolean builded = false
+            local integer lumber = 0
+            local integer towerTypeId
+            local unit currentTower
+		    local group all = CreateGroup()
+		    local group closest = CreateGroup()
+		    local Tower tower
+            set .builded = false
+            set lumber = Game.getPlayerLumber(.playerId)
+            set towerTypeId = .config.getRandomBuilding()
+            set tower = .systemTower.findTowersById(towerTypeId)
+            if .isEnabled() then
+                if .canBuild then
+                	if .lumber + 0 <= lumber then
+                        //configuration search
+                        //add towerCosts.GetUnitCostById(unitType, GetTowerCost.COST_LUMBER)
+                        if lumber >= 400 then //if user has enough lumber to build
+                            set .builded = .build(tower.towerTypeId)
+							if .builded then
+				        		set .lumber = Game.getPlayerLumber(.playerId)
+							endif
+                        endif
+                        if tower.towerTypeId != towerTypeId then
+							call .addToUpgradeQueue(towerTypeId)
+                        endif
+					endif
+				endif
+				set .canBuild = .builded
+			endif
+        endmethod
+        
+        /**
+         * build tower after sleep
+         */
+        private static method buildAfterSleep takes nothing returns nothing
+        	call thistype.me.buildNext()
+        endmethod
+        
+        /**
+         * upgrade tower after sleep
+         */
+        private static method upgradeAfterSleep takes nothing returns nothing
+            call thistype.me.upgradeFirstFromQueue()
+        endmethod
+        
+        /**
+         * look how many upgrades are in the queue
+         */
+        private method countUpgradeQueue takes nothing returns integer
+        	local integer currentPosition = 0
+        	local integer queueCount = 0
+        	loop
+        		exitwhen currentPosition >= 10
+        		if .upgradeQueue[currentPosition] != 0 then 
+                    set queueCount = queueCount + 1
+                endif
+        	endloop
+        	return queueCount
+        endmethod
+        
+        /**
+         * that the builders can build after start
+         */
+        public method eventWithSleep takes integer eventType returns nothing
+            local timer tAI = CreateTimer()
+            if eventType == thistype.SLEEP_BEFORE_BUILD then
+            	call TimerStart(tAI, 1.0, false, function thistype.buildAfterSleep)
+            elseif eventType == thistype.SLEEP_BEFORE_UPGRADE then
+                if .countUpgradeQueue > 0 then
+	        		call TimerStart(tAI, 1.0, false, function thistype.upgradeAfterSleep)
+	        	endif
+	        endif
+			set tAI = null
         endmethod
     endstruct
 
@@ -428,6 +593,26 @@ call BJDebugMsg(I2S(count))
     struct TowerSystemAI
 		private static integer MAX_PLAYER = 6
 		private static TowerBuildAI array towerBuilder[6]
+		public static integer lastUnit
+        private static Tower array towers[11]
+
+		/**
+		 * find the tower with child towers
+		 * @paraminteger towerTypeId
+		 */
+		public method findTowersById takes integer towerTypeId returns Tower
+			local integer currentTower = 0
+			local Tower searchedTower
+			loop
+				exitwhen currentTower >= 11
+				if .towers[currentTower].hasTowerId(towerTypeId) then
+					set searchedTower = .towers[currentTower]
+					set currentTower = 20
+				endif
+				set currentTower = currentTower + 1
+			endloop
+			return searchedTower
+		endmethod
 
 		/**
 		 * gets the builder-ai by position
@@ -436,6 +621,137 @@ call BJDebugMsg(I2S(count))
 		 */
 		public method getBuildAIByPosition takes integer position returns TowerBuildAI
 			return .towerBuilder[position]
+		endmethod
+		
+		private method initTowers takes nothing returns nothing
+	        local Tower tower
+		
+	        //cursed
+	        set tower = Tower.create()
+	        set tower.towerTypeId = 'u00X'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u011'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u012'
+			set .towers[0] = tower
+			
+	        //Decayed
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u013'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u014'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u015'
+			set .towers[1] = tower
+			
+	        //Gloom
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u01D'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u01E'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u01F'
+			set .towers[2] = tower
+			
+	        //Shady
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u00R'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u00S'
+	        call tower.getChildTower().setChildTower(Tower.create()) 
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u00T'
+			set .towers[3] = tower
+			
+	        //Totem
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u01M'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u01R'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u01T'
+			set .towers[4] = tower
+			
+	        //Putrid
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u01A'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u01B'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u01C'
+			set .towers[5] = tower
+			
+	        //Magma
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u01I'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u01G'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u01H'
+			set .towers[6] = tower
+			
+	        //Ice
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u016'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u017'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u018'
+			set .towers[7] = tower
+			
+	        //Rock
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u00Y'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u00Z'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u010'
+			set .towers[8] = tower
+			
+	        //Obelisk
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u00U'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u00V'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u00W'
+			set .towers[9] = tower
+			
+	        //Glacier
+			set tower = Tower.create()
+	        set tower.towerTypeId = 'u01J'
+	        call tower.setChildTower(Tower.create())
+	        set tower.getChildTower().towerTypeId = 'u01K'
+	        call tower.getChildTower().setChildTower(Tower.create())
+	        set tower.getChildTower().getChildTower().towerTypeId = 'u01L'
+			set .towers[10] = tower
+		endmethod
+		
+		/**
+		 * init the tower config for given player
+		 */
+		private method initTowerConfig takes integer playerId returns nothing
+			local TowerBuildConfig buildConfig = TowerBuildConfig.create()
+			call buildConfig.addBuilding('u00V')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00V')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00V')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00V')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00S')
+			call buildConfig.addBuilding('u00Y')
+			call buildConfig.addBuilding('u00Y')
+			call .towerBuilder[playerId].setConfig(buildConfig)
 		endmethod
 		
         /**
@@ -447,12 +763,17 @@ call BJDebugMsg(I2S(count))
 	        local real height = width
 	        call RemoveUnit(building)
 	        
+	        call .initTowers()
+	        
             set .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].addRectangle(gg_rct_TowersTopLeftTop)
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].addRectangle(gg_rct_TowersTopLeftBottom)
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].setBuildFromTo(true, false)
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_TOP_LEFT)
+            set .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].playerId = TOWER_SYSTEM_AI_TOP_LEFT
+            set .towerBuilder[TOWER_SYSTEM_AI_TOP_LEFT].systemTower = this
             
             set .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].addRectangle(gg_rct_TowersTopRightTop)
@@ -460,6 +781,8 @@ call BJDebugMsg(I2S(count))
 			call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].setTowerSize(width, height)
+            set .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].playerId = TOWER_SYSTEM_AI_TOP_RIGHT
+            set .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].systemTower = this
             
             set .towerBuilder[TOWER_SYSTEM_AI_LEFT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].addRectangle(gg_rct_TowersLeftTop)
@@ -467,6 +790,8 @@ call BJDebugMsg(I2S(count))
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].setBuildFromTo(true, false)
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].setTowerSize(width, height)
+            set .towerBuilder[TOWER_SYSTEM_AI_LEFT].playerId = TOWER_SYSTEM_AI_LEFT
+            set .towerBuilder[TOWER_SYSTEM_AI_LEFT].systemTower = this
             
             set .towerBuilder[TOWER_SYSTEM_AI_RIGHT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].addRectangle(gg_rct_TowersRightTop)
@@ -474,6 +799,8 @@ call BJDebugMsg(I2S(count))
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].setTowerSize(width, height)
+            set .towerBuilder[TOWER_SYSTEM_AI_RIGHT].playerId = TOWER_SYSTEM_AI_RIGHT
+            set .towerBuilder[TOWER_SYSTEM_AI_RIGHT].systemTower = this
             
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].addRectangle(gg_rct_TowersBottomLeftLeft)
@@ -482,6 +809,8 @@ call BJDebugMsg(I2S(count))
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].setBuildFromTo(true, false)
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].setTowerSize(width, height)
+            set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].playerId = TOWER_SYSTEM_AI_BOTTOM_LEFT
+            set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].systemTower = this
             
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT] = TowerBuildAI.create()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].addRectangle(gg_rct_TowersBottomRightLeft)
@@ -490,63 +819,79 @@ call BJDebugMsg(I2S(count))
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].setTowerSize(width, height)
+            set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].playerId = TOWER_SYSTEM_AI_BOTTOM_RIGHT
+            set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].systemTower = this
+            
+            call .initializeEvents()
         endmethod
+        
+        /**
+         * initialize the events
+         */
+        public method initializeEvents takes nothing returns nothing
+            local integer i = 0
+            local trigger t1 = CreateTrigger()
+            local trigger t2 = CreateTrigger()
+            local trigger t3 = CreateTrigger()
+			local code c1 = function thistype.onConstructFinish
+			local code c2 = function thistype.onConstructStart
+            
+            //Register Tower Events for Player 1-6
+            loop
+                exitwhen i > 5
+                if Game.isPlayerInGame(i) then
+					call TriggerRegisterPlayerUnitEvent(t1, Player(i), EVENT_PLAYER_UNIT_UPGRADE_FINISH, null)
+                    call TriggerRegisterPlayerUnitEvent(t2, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_FINISH, null)
+                    call TriggerRegisterPlayerUnitEvent(t3, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_START, null)
+                endif
+                set i = i + 1
+            endloop
+            call TriggerAddCondition(t1, Filter(c1))
+            call TriggerAddCondition(t2, Filter(c1))
+            call TriggerAddCondition(t3, Filter(c2))
+            set t1 = null
+            set t2 = null
+            set t3 = null
+            set c1 = null
+            set c2 = null
+        endmethod
+        
+        /**
+         * tower build or upgrade is finished
+         */
+        public static method onConstructFinish takes nothing returns nothing
+			local unit triggerUnit = GetTriggerUnit() //Tower
+            local integer playerId = GetPlayerId(GetOwningPlayer(triggerUnit))
+            set .towerBuilder[playerId].lastUnit = triggerUnit
+    		call .towerBuilder[playerId].addTower(triggerUnit)
+    		if .towerBuilder[playerId].isEnabled() then
+            	call .towerBuilder[playerId].eventWithSleep(.towerBuilder[playerId].SLEEP_BEFORE_UPGRADE)
+            endif
+            set triggerUnit = null
+    	endmethod
+        
+        /**
+         * tower build is started
+         */
+        public static method onConstructStart takes nothing returns nothing
+            local integer playerId = GetPlayerId(GetOwningPlayer(GetTriggerUnit()))
+            if .towerBuilder[playerId].isEnabled() then
+            	call .towerBuilder[playerId].eventWithSleep(.towerBuilder[playerId].SLEEP_BEFORE_BUILD)
+            endif
+    	endmethod
 
 		/**
-		 * begin the build loop
+		 * build start
 		 */
-        public static method buildNext takes nothing returns nothing
+        public static method buildStart takes nothing returns nothing
             local integer playerId = 0
             loop
             	exitwhen playerId >= .MAX_PLAYER
         		set .towerBuilder[playerId].canBuild = true
+            	call .towerBuilder[playerId].buildNext()
                 set playerId = playerId + 1
             endloop
-            call .buildLoop()
         endmethod
         
-		/**
-		 * build the next tower
-		 * @param integer towerAIPosition
-		 * @param integer lumber
-		 */
-        private static method buildLoop takes nothing returns nothing
-            local timer tAI = CreateTimer()
-            local integer playerId = 0
-            local boolean builded = false
-            local integer lumber = 0
-            loop
-            	exitwhen playerId >= .MAX_PLAYER
-                set lumber = Game.getPlayerLumber(playerId)
-                if .towerBuilder[playerId].isEnabled() then
-                    if .towerBuilder[playerId].canBuild then
-                    	if .towerBuilder[playerId].lumber <= lumber then
-                            //configuration search
-                            
-                            if lumber >= 100 then //if user has enough lumber to build
-								call .towerBuilder[playerId].build('u00U')
-					        	set .towerBuilder[playerId].lumber = Game.getPlayerLumber(playerId)
-                            else
-                                set .towerBuilder[playerId].builded = false
-                            endif
-						endif
-					endif
-                    if .towerBuilder[playerId].builded then
-                        set builded = true
-                        call BJDebugMsg("builded")
-                    else
-                        set .towerBuilder[playerId].canBuild = false
-                    endif
-				endif
-                set playerId = playerId + 1
-            endloop
-            set playerId = 0
-            if builded then
-	            call TimerStart(tAI, 1.0, false, function thistype.buildLoop)
-	            call BJDebugMsg("STartTimer")
-            endif
-            set tAI = null
-        endmethod
-
     endstruct
 endscope
