@@ -8,7 +8,6 @@ scope AITower
         private constant integer MAX_TOWERS = 33
 
         private hashtable TOWER_DATA = InitHashtable()
-        private unit array ACOLYTS
         private real array START_POS_X
         private real array START_POS_Y
         
@@ -45,15 +44,10 @@ scope AITower
         	
             set towerBuildAI = TowerSystemAI.create()
             call towerBuildAI.initTowerBuildAI()
-            set ACOLYTS[0] = CreateUnit(Player(0), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
-            set ACOLYTS[1] = CreateUnit(Player(1), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
-            set ACOLYTS[2] = CreateUnit(Player(2), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING)
-            call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_LEFT).setBuilder(ACOLYTS[0])
-//                        call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_RIGHT).setBuilder(ACOLYTS[1])
-//                                    call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_LEFT).setBuilder(ACOLYTS[2])
+call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_LEFT).setBuilder(CreateUnit(Player(0), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING))
+call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_TOP_RIGHT).setBuilder( CreateUnit(Player(1), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopLeftBottom)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING))
+call towerBuildAI.getBuildAIByPosition(TOWER_SYSTEM_AI_LEFT).setBuilder(CreateUnit(Player(2), ACOLYTE_I_ID, R2I(GetRectCenterX(gg_rct_TowersTopRightTop)), R2I(GetRectCenterY(gg_rct_TowersTopLeftTop)), bj_UNIT_FACING))
 
-            //@TODO: Currently only to test must change!
-//            call towerBuildAI.generateBuildPositions(gg_rct_TowersTopLeftTop, 3, 0, ACOLYTS[0])
             call towerBuildAI.buildStart()
         endmethod
 
@@ -255,8 +249,6 @@ scope AITower
         private static integer MAX_REGIONS = 3
         private static integer TOWER_WIDTH = 0
         private static integer TOWER_HEIGHT = 1
-        public static integer SLEEP_BEFORE_BUILD = 1
-        public static integer SLEEP_BEFORE_UPGRADE = 2
         
 		private rect array rectangles[3]        
         private real array positionLeft[3]
@@ -285,7 +277,6 @@ scope AITower
         public boolean upgradeQueueActivate = true
         public integer playerId
         public TowerSystemAI systemTower
-        private static TowerBuildAI me
 
 		/**
 		 * sets the builder
@@ -294,7 +285,6 @@ scope AITower
         public method setBuilder takes unit builder returns nothing
             set .builder = builder
             set .enabled = true
-            set thistype.me = this
         endmethod
         
         /**
@@ -374,7 +364,7 @@ scope AITower
 		 * upgrade towers from the queue
 		 * @return boolean
 		 */
-		private method upgradeFirstFromQueue takes nothing returns boolean
+		public method upgradeFirstFromQueue takes nothing returns boolean
             local integer currentPosition = 10
             local integer towerTypeId = 0
             local integer lastTowerTypeId = 0
@@ -431,6 +421,7 @@ scope AITower
  			set key = .getTowerUnitKeyById(tower.getParentTower().towerTypeId)
 			return key < 60 and IssueImmediateOrderById(.tower[key], tower.towerTypeId)
 		endmethod
+		
 		/**
 		 * build next unit
 		 * @param integer unitId
@@ -440,12 +431,11 @@ scope AITower
  			local real positionY = 0
  			local real positionX = 0
  			local integer currentRegion = 0
- 			local integer checkPosition = 0
  			local real width = .towerSize[.TOWER_WIDTH]
 			local real height = .towerSize[.TOWER_HEIGHT]
 			local boolean builded = false
 			local boolean buildX = false
-			
+
  			if .topToBottom == false then
                 set height = height * -1
             endif
@@ -465,18 +455,15 @@ scope AITower
 				else
 	                set positionX = .positionRight[currentRegion] - (width / 2)
 	            endif
- 				set checkPosition = 0
  				set buildX = .positionTop[currentRegion] - .positionBottom[currentRegion] > .positionLeft[currentRegion] - .positionRight[currentRegion]
  				
  				loop 
- 					exitwhen checkPosition >= 3
 					if buildX then
 						set positionX = positionX + width
 					else
 						set positionY = positionY + height
 					endif
 					set builded = IssueBuildOrderById(.builder, unitId, positionX, positionY)
-					
 					if builded then
 						set .lastPosition[0] = positionX
 						set .lastPosition[1] = positionY
@@ -543,23 +530,10 @@ scope AITower
         endmethod
         
         /**
-         * build tower after sleep
-         */
-        private static method buildAfterSleep takes nothing returns nothing
-        	call thistype.me.buildNext()
-        endmethod
-        
-        /**
-         * upgrade tower after sleep
-         */
-        private static method upgradeAfterSleep takes nothing returns nothing
-            call thistype.me.upgradeFirstFromQueue()
-        endmethod
-        
-        /**
          * look how many upgrades are in the queue
+         * @return integer
          */
-        private method countUpgradeQueue takes nothing returns integer
+        public method countUpgradeQueue takes nothing returns integer
         	local integer currentPosition = 0
         	local integer queueCount = 0
         	loop
@@ -567,34 +541,44 @@ scope AITower
         		if .upgradeQueue[currentPosition] != 0 then 
                     set queueCount = queueCount + 1
                 endif
+                set currentPosition = currentPosition + 1
         	endloop
         	return queueCount
         endmethod
-        
-        /**
-         * that the builders can build after start
-         */
-        public method eventWithSleep takes integer eventType returns nothing
-            local timer tAI = CreateTimer()
-            if eventType == thistype.SLEEP_BEFORE_BUILD then
-            	call TimerStart(tAI, 1.0, false, function thistype.buildAfterSleep)
-            elseif eventType == thistype.SLEEP_BEFORE_UPGRADE then
-                if .countUpgradeQueue > 0 then
-	        		call TimerStart(tAI, 1.0, false, function thistype.upgradeAfterSleep)
-	        	endif
-	        endif
-			set tAI = null
-        endmethod
     endstruct
 
+	/**
+	 * the tower events
+	 */
+	struct TowerEvent
+		public integer playerId
+		public integer eventTypeId
+		public boolean initialized
+		
+		/**
+		 * initialize event
+		 * @param integer playerId
+		 * @param integer eventTypeId
+		 */
+		public method startEvent takes integer playerId, integer eventTypeId returns nothing
+			set .playerId = playerId
+			set .eventTypeId = eventTypeId
+			set .initialized = true
+		endmethod
+	endstruct
+	
     /**
      * ----------------------------- STRUCT TowerSystemAI ---------------------------------
      */
     struct TowerSystemAI
+		private static integer EVENT_TYPE_UPGRADE = 1
+		private static integer EVENT_TYPE_BUILD = 2
 		private static integer MAX_PLAYER = 6
 		private static TowerBuildAI array towerBuilder[6]
 		public static integer lastUnit
         private static Tower array towers[11]
+        private static TowerEvent array towerEvents[100]
+        private static integer eventsCounter = 0
 
 		/**
 		 * find the tower with child towers
@@ -623,6 +607,9 @@ scope AITower
 			return .towerBuilder[position]
 		endmethod
 		
+		/**
+		 * initialize the towers
+		 */
 		private method initTowers takes nothing returns nothing
 	        local Tower tower
 		
@@ -761,6 +748,7 @@ scope AITower
             local unit building = CreateUnit( Player(0), 'u00U', 0, 0, bj_UNIT_FACING ) 
 	        local real width = GetUnitCollision(building)
 	        local real height = width
+	        local integer counter = 0
 	        call RemoveUnit(building)
 	        
 	        call .initTowers()
@@ -781,6 +769,7 @@ scope AITower
 			call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_TOP_RIGHT)
             set .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].playerId = TOWER_SYSTEM_AI_TOP_RIGHT
             set .towerBuilder[TOWER_SYSTEM_AI_TOP_RIGHT].systemTower = this
             
@@ -790,6 +779,7 @@ scope AITower
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].setBuildFromTo(true, false)
             call .towerBuilder[TOWER_SYSTEM_AI_LEFT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_LEFT)
             set .towerBuilder[TOWER_SYSTEM_AI_LEFT].playerId = TOWER_SYSTEM_AI_LEFT
             set .towerBuilder[TOWER_SYSTEM_AI_LEFT].systemTower = this
             
@@ -799,6 +789,7 @@ scope AITower
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_RIGHT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_RIGHT)
             set .towerBuilder[TOWER_SYSTEM_AI_RIGHT].playerId = TOWER_SYSTEM_AI_RIGHT
             set .towerBuilder[TOWER_SYSTEM_AI_RIGHT].systemTower = this
             
@@ -809,6 +800,7 @@ scope AITower
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].setBuildFromTo(true, false)
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_BOTTOM_LEFT)
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].playerId = TOWER_SYSTEM_AI_BOTTOM_LEFT
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_LEFT].systemTower = this
             
@@ -819,10 +811,17 @@ scope AITower
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].initPositions()
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].setBuildFromTo(false, false)
             call .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].setTowerSize(width, height)
+            call .initTowerConfig(TOWER_SYSTEM_AI_BOTTOM_RIGHT)
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].playerId = TOWER_SYSTEM_AI_BOTTOM_RIGHT
             set .towerBuilder[TOWER_SYSTEM_AI_BOTTOM_RIGHT].systemTower = this
             
             call .initializeEvents()
+	        
+	        loop 
+	        	exitwhen counter > 99
+	        	set .towerEvents[counter] = TowerEvent.create()
+	        	set counter = counter + 1
+	        endloop
         endmethod
         
         /**
@@ -833,6 +832,7 @@ scope AITower
             local trigger t1 = CreateTrigger()
             local trigger t2 = CreateTrigger()
             local trigger t3 = CreateTrigger()
+            local trigger t4 = CreateTrigger()
 			local code c1 = function thistype.onConstructFinish
 			local code c2 = function thistype.onConstructStart
             
@@ -842,16 +842,19 @@ scope AITower
                 if Game.isPlayerInGame(i) then
 					call TriggerRegisterPlayerUnitEvent(t1, Player(i), EVENT_PLAYER_UNIT_UPGRADE_FINISH, null)
                     call TriggerRegisterPlayerUnitEvent(t2, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_FINISH, null)
-                    call TriggerRegisterPlayerUnitEvent(t3, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_START, null)
+                    call TriggerRegisterPlayerUnitEvent(t3, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_CANCEL, null)
+                    call TriggerRegisterPlayerUnitEvent(t4, Player(i), EVENT_PLAYER_UNIT_CONSTRUCT_START, null)
                 endif
                 set i = i + 1
             endloop
             call TriggerAddCondition(t1, Filter(c1))
             call TriggerAddCondition(t2, Filter(c1))
-            call TriggerAddCondition(t3, Filter(c2))
+            call TriggerAddCondition(t3, Filter(c1))
+            call TriggerAddCondition(t4, Filter(c2))
             set t1 = null
             set t2 = null
             set t3 = null
+            set t4 = null
             set c1 = null
             set c2 = null
         endmethod
@@ -862,10 +865,10 @@ scope AITower
         public static method onConstructFinish takes nothing returns nothing
 			local unit triggerUnit = GetTriggerUnit() //Tower
             local integer playerId = GetPlayerId(GetOwningPlayer(triggerUnit))
-            set .towerBuilder[playerId].lastUnit = triggerUnit
-    		call .towerBuilder[playerId].addTower(triggerUnit)
-    		if .towerBuilder[playerId].isEnabled() then
-            	call .towerBuilder[playerId].eventWithSleep(.towerBuilder[playerId].SLEEP_BEFORE_UPGRADE)
+            set thistype.towerBuilder[playerId].lastUnit = triggerUnit
+    		call thistype.towerBuilder[playerId].addTower(triggerUnit)
+    		if (thistype.towerBuilder[playerId].isEnabled() and thistype.towerBuilder[playerId].countUpgradeQueue() > 0) then
+            	call thistype.eventWithSleep(playerId, thistype.EVENT_TYPE_UPGRADE)
             endif
             set triggerUnit = null
     	endmethod
@@ -876,7 +879,7 @@ scope AITower
         public static method onConstructStart takes nothing returns nothing
             local integer playerId = GetPlayerId(GetOwningPlayer(GetTriggerUnit()))
             if .towerBuilder[playerId].isEnabled() then
-            	call .towerBuilder[playerId].eventWithSleep(.towerBuilder[playerId].SLEEP_BEFORE_BUILD)
+            	call thistype.eventWithSleep(playerId, thistype.EVENT_TYPE_BUILD)
             endif
     	endmethod
 
@@ -893,5 +896,42 @@ scope AITower
             endloop
         endmethod
         
+        /**
+         * build or upgrade tower after sleep
+         */
+        private static method doAfterSleep takes nothing returns nothing
+        	local integer counter = 0
+        	loop
+        		exitwhen counter > 99 or thistype.towerEvents[counter].initialized == true
+        		set counter = counter + 1
+        	endloop
+        	if (counter < 100) then
+	        	set thistype.towerEvents[counter].initialized = false
+	            if (thistype.towerEvents[counter].eventTypeId == thistype.EVENT_TYPE_UPGRADE) then
+	                call thistype.towerBuilder[thistype.towerEvents[counter].playerId].upgradeFirstFromQueue()
+	            	//call TimerStart(tAI, 1.0, false, function thistype.buildAfterSleep)
+	            elseif (thistype.towerEvents[counter].eventTypeId == thistype.EVENT_TYPE_BUILD) then
+	            	call thistype.towerBuilder[thistype.towerEvents[counter].playerId].buildNext()
+	        		//call TimerStart(tAI, 1.0, false, function thistype.upgradeAfterSleep)
+		        endif
+	        endif
+        endmethod
+        
+        /**
+         * that the builders can build after start
+         */
+        public static method eventWithSleep takes integer playerId, integer eventType returns nothing
+            local timer tAI = CreateTimer()
+	        local integer counter = thistype.eventsCounter
+	        set thistype.eventsCounter = thistype.eventsCounter + 1
+            if (thistype.eventsCounter > 99) then
+                set thistype.eventsCounter = 0
+            endif
+            if (counter < 100) then
+                call thistype.towerEvents[counter].startEvent(playerId, eventType)
+            	call TimerStart(tAI, 1.0, false, function thistype.doAfterSleep)
+            endif
+            set tAI = null
+        endmethod        
     endstruct
 endscope
