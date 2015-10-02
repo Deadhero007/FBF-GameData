@@ -464,7 +464,7 @@ library MiscFunctions requires GroupUtils
     endfunction
     
     function DamageUnit takes unit source, unit target, real damage, boolean magic returns nothing
-        set DamageType = SPELL
+        //set DamageType = SPELL
         if magic then
             call UnitDamageTarget(source,target,damage,true,false,ATTACK_TYPE_NORMAL,DAMAGE_TYPE_MAGIC,WEAPON_TYPE_WHOKNOWS)        
         else
@@ -523,53 +523,12 @@ library MiscFunctions requires GroupUtils
         return Rect( tx - width * 0.5, ty - height * 0.5, tx + width * 0.5, ty + height * 0.5 )
     endfunction
     
-    function XE_Dummy_Conditions takes unit u returns boolean
-        return GetUnitTypeId(u) != XE_DUMMY_UNITID
-    endfunction
-	
-	globals
+    globals
 		private constant real ALPHA = 1.0
 		private constant real BETA = 0.1
 	endglobals
     
-	function GetGameStartRatioValue takes integer value, real factor returns integer
-		//Wenn auf beiden Seiten Spieler sind...
-		if not (Game.isOneSidedGame()) then
-			return R2I(I2R(value) * I2R(Game.getCoalitionPlayers()) / I2R(6) * (I2R(1) + factor * (I2R(6) - I2R(Game.getForsakenPlayers()))))
-		//Wenn nur auf der Forsaken Seite Spieler sind...
-		elseif (Game.getCoalitionPlayers() == 0 and Game.getForsakenPlayers() > 0) then
-			return R2I(I2R(value) * I2R(Game.getForsakenPlayers()) / I2R(6))
-		//Wenn nur auf der Coalition Seite Spieler sind...
-		else
-			return R2I(I2R(value) * I2R(Game.getCoalitionPlayers()) / I2R(6) * (I2R(1) + factor))
-		endif
-	endfunction
-	
-    function GetDynamicRatioValue takes integer value, real factor returns integer
-		local integer val = 0
-		
-		//call BJDebugMsg("Old Value: " + I2S(value))
-		//Wenn auf beiden Seiten Spieler sind...
-		if not (Game.isOneSidedGame()) then
-			//call BJDebugMsg(I2S(value) + "*" + I2S(Game.getCoalitionPlayers()) + "/6 * (1 + " + R2S(factor) + "*(6-" + I2S(Game.getForsakenPlayers()) + "))")
-			set val = R2I(I2R(value) * I2R(Game.getCoalitionPlayers()) / I2R(6) * (I2R(1) + factor * (I2R(6) - I2R(Game.getForsakenPlayers()))))
-			//call BJDebugMsg("New Value: " + I2S(val))
-		//Wenn nur auf der Forsaken Seite Spieler sind...
-		elseif (Game.getCoalitionPlayers() == 0 and Game.getForsakenPlayers() > 0) then
-			set val = R2I(I2R(value) * I2R(Game.getForsakenPlayers()) / I2R(6))
-		//Wenn nur auf der Coalition Seite Spieler sind...
-		else
-			set val = R2I(I2R(value) * BETA * Game.getCoalitionHeroLevelSumPow(ALPHA))
-		endif
-		
-		if (val == 0) then
-			set val = value
-		endif
-		
-		return val
-    endfunction
-    
-    //Zeige/Versteck des Timer Dialogs
+	//Zeige/Versteck des Timer Dialogs
     function TimerDialogDisplayForPlayer takes player p, timerdialog tm, boolean show returns nothing
         if (GetLocalPlayer() == p) then
             call TimerDialogDisplay(tm, show)

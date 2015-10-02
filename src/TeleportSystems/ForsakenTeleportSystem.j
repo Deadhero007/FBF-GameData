@@ -36,8 +36,7 @@ scope ForsakenTeleportSystem initializer init
             if IsUnitInRegion(GetTriggeringRegion(), teleporter) then
                 if GetUnitRace(u) == RACE_UNDEAD then
                     if IsUnitType(u, UNIT_TYPE_HERO) or /*
-                    */ IsUnitAlly(u, ConvertedPlayer(IMaxBJ(1, 6))) and /*
-                    */ XE_Dummy_Conditions(u) then
+                    */ IsUnitAlly(u, ConvertedPlayer(IMaxBJ(1, 6))) then
                         set b = true
                     endif
                 endif
@@ -106,7 +105,7 @@ scope ForsakenTeleportSystem initializer init
 			if ((GetLocalPlayer() == p) and IsUnitType(u, UNIT_TYPE_HERO)) then
                 call PanCameraToTimed(x, y, 0.00)
             endif
-            call Sound.runSoundForPlayer(GLOBAL_SOUND_3, p)
+            //call Sound.runSoundForPlayer(GLOBAL_SOUND_3, p)
             
             set u = null
         endmethod
@@ -138,8 +137,7 @@ scope ForsakenTeleportSystem initializer init
         
         if GetUnitRace(u) == RACE_UNDEAD then
             if IsUnitType(u, UNIT_TYPE_HERO) or /*
-            */ IsUnitAlly(u, ConvertedPlayer(IMaxBJ(1, 6))) and /*
-            */ XE_Dummy_Conditions(u) then
+            */ IsUnitAlly(u, ConvertedPlayer(IMaxBJ(1, 6))) then
                 set b = true
             endif
         endif
