@@ -4,6 +4,7 @@
 //! import "src\Libraries\Table.j"
 //! import "src\Libraries\GetUnitCollision.j"
 //! import "src\AI-Systems\AI-Tower.j"
+//! import "src\AI-Systems\AI-TowerBuilder.j"
 
 
 
@@ -11,6 +12,8 @@
 
 
 //! import "src\GameConfig\Game.j"
+//! import "src\TowerSystems\CommonAIimports.j"
+//! import "src\TowerSystems\TowerSystem.j"
 
 /*
 //! import "src\Libraries\InvulnerabilityDetector.j"
