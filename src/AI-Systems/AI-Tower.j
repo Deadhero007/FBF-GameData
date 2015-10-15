@@ -201,7 +201,7 @@ call TowerAIEventListener.getTowerBuildAI(TOWER_SYSTEM_AI_LEFT).setBuilder(Creat
             local integer playerId = GetPlayerId(GetOwningPlayer(triggerUnit))
     		call TowerAIEventListener.getTowerBuildAI(playerId).addTower(triggerUnit)
     		if (TowerAIEventListener.getTowerBuildAI(playerId).isEnabled() and TowerAIEventListener.getTowerBuildAI(playerId).countUpgradeQueue() > 0) then
-            	call TowerAIEventListener.addEvent(triggerUnit, TOWER_AI_EVENT_UPGRADE)
+            	call TowerAIEventListener.addUpgradeEvent(triggerUnit)
             endif
             set triggerUnit = null
     	endmethod
@@ -213,7 +213,7 @@ call TowerAIEventListener.getTowerBuildAI(TOWER_SYSTEM_AI_LEFT).setBuilder(Creat
 			local unit triggerUnit = GetTriggerUnit() //Tower
             local integer playerId = GetPlayerId(GetOwningPlayer(triggerUnit))
             if TowerAIEventListener.getTowerBuildAI(playerId).isEnabled() then
-            	call TowerAIEventListener.addEvent(GetTriggerUnit(), TOWER_AI_EVENT_BUILD)
+            	call TowerAIEventListener.addBuildEvent(GetTriggerUnit())
             endif
     	endmethod
 

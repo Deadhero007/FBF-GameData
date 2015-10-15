@@ -4,30 +4,30 @@ scope TowerBuildAI
         /**
          * the tower size width
          */
-        constant integer TOWER_SIZE_WIDTH = 0
+        private constant integer TOWER_SIZE_WIDTH = 0
         /**
          * the tower size height
          */
-        constant integer TOWER_SIZE_HEIGHT = 1
+        private constant integer TOWER_SIZE_HEIGHT = 1
         /**
          * the event to upgrade after finish build
          */
-        constant integer TOWER_AI_EVENT_UPGRADE = 1
+        private constant integer TOWER_AI_EVENT_UPGRADE = 1
 
         /**
          * the event to build next tower after begin build
          */
-        constant integer TOWER_AI_EVENT_BUILD = 2
-        
+        private constant integer TOWER_AI_EVENT_BUILD = 2
+
         /**
          * the max players
          */
-        constant integer TOWER_AI_MAX_PLAYER = 12
-        
+        private constant integer TOWER_AI_MAX_PLAYER = 12
+
         /**
          * the max events
          */
-        constant integer TOWER_AI_MAX_EVENTS = 100
+        private constant integer TOWER_AI_MAX_EVENTS = 100
     endglobals
 
     /**
@@ -313,8 +313,13 @@ scope TowerBuildAI
          * @var integer
          */
         private integer lumberCost = 0
-        
-        
+
+        /**
+         * The chosen region to build at first.
+         * @var integer
+         */
+        private integer chosenRegion = 0
+
         /**
          * @deprecated
          */
@@ -344,6 +349,13 @@ scope TowerBuildAI
          */        
         private boolean topToBottom = false
 
+        /**
+         * Sets the chosen region
+         * @param integer chosenRegion
+         */
+        public method setChosenRegion takes integer chosenRegion returns nothing
+            set .chosenRegion = chosenRegion
+        endmethod
 
         /**
          * set the towers
@@ -516,34 +528,35 @@ scope TowerBuildAI
          * @return boolean
          */
         public method build takes integer unitId returns boolean
-             local real positionY = 0
-             local real positionX = 0
-             local integer currentRegion = 0
-             local real width = .towerSize[TOWER_SIZE_WIDTH]
+            local real positionY = 0
+            local real positionX = 0
+            local integer currentRegion = .chosenRegion
+            local real width = .towerSize[TOWER_SIZE_WIDTH]
             local real height = .towerSize[TOWER_SIZE_HEIGHT]
             local boolean builded = false
             local boolean buildX = false
-             if .topToBottom == false then
+            if .topToBottom == false then
                 set height = height * -1
             endif
-             if .leftToRight == false then
+            if .leftToRight == false then
                 set width = width * -1
             endif
 
-             loop 
+            loop
                 exitwhen currentRegion >= .countRegion
-                 if .topToBottom then
+                if .topToBottom then
                     set positionY = .positionTop[currentRegion] + (height / 2)
                 else
                     set positionY = .positionBottom[currentRegion] - (height / 2)
                 endif
-                 if .leftToRight then
+                if .leftToRight then
                     set positionX = .positionLeft[currentRegion] + (width / 2)
                 else
                     set positionX = .positionRight[currentRegion] - (width / 2)
                 endif
-                 set buildX = .positionTop[currentRegion] - .positionBottom[currentRegion] > .positionLeft[currentRegion] - .positionRight[currentRegion]
-                 loop 
+                set buildX = .positionTop[currentRegion] - .positionBottom[currentRegion] > .positionLeft[currentRegion] - .positionRight[currentRegion]
+
+                loop
                     if buildX then
                         set positionX = positionX + width
                     else
@@ -553,10 +566,19 @@ scope TowerBuildAI
                     
                     exitwhen builded or positionX < .positionLeft[currentRegion] or positionX > .positionRight[currentRegion]
                     exitwhen positionY > .positionTop[currentRegion] or positionY < .positionBottom[currentRegion]
-                 endloop
-                 exitwhen builded
-                 set currentRegion = currentRegion + 1
-             endloop
+                endloop
+                exitwhen builded
+                if (currentRegion == .chosenRegion) then
+                    set currentRegion = 0
+                else
+                    set currentRegion = currentRegion + 1
+                endif
+
+                // if the current region equal to .chosenRegion then must plus 1 or the loop can not end.
+                if (currentRegion == .chosenRegion) then
+                    set currentRegion = currentRegion + 1
+                endif
+            endloop
             return builded
         endmethod
         
@@ -750,7 +772,25 @@ scope TowerBuildAI
          * @param unit triggerUnit
          * @param integer eventType
          */
-        public static method addEvent takes unit triggerUnit, integer eventType returns nothing
+        public static method addBuildEvent takes unit triggerUnit returns nothing
+            call thistype.addEvent(triggerUnit, TOWER_AI_EVENT_BUILD)
+        endmethod
+
+        /**
+         * that the builders can build after start
+         * @param unit triggerUnit
+         * @param integer eventType
+         */
+        public static method addUpgradeEvent takes unit triggerUnit returns nothing
+            call thistype.addEvent(triggerUnit, TOWER_AI_EVENT_UPGRADE)
+        endmethod
+
+        /**
+         * that the builders can build after start
+         * @param unit triggerUnit
+         * @param integer eventType
+         */
+        private static method addEvent takes unit triggerUnit, integer eventType returns nothing
             local timer tAI = CreateTimer()
             local integer counter = thistype.eventsCount
             call thistype.initialize()
