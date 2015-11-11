@@ -18,6 +18,7 @@
 /* AI Systems */
 //! import "src\AI-Systems\HeroAI.j"
 //! import "src\AI-Systems\HeroAILearnset.j"
+//! import "src\AI-Systems\HeroAIItem.j"
 
 
 

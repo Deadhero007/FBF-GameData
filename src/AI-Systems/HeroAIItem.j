@@ -1,5 +1,3 @@
-//TESH.scrollpos=29
-//TESH.alwaysfold=0
 //==========================================================================================
 // This is separated from the main system of HeroAI to provide better organization.
 //
@@ -21,13 +19,13 @@
 
 	globals		
 		// The max amount of items a hero can hold
-		private constant integer MAX_INVENTORY_SIZE = 6 
-		// The range at which shops sell items		
+		private constant integer MAX_INVENTORY_SIZE = 6
+		// The range at which shops sell items
         public  constant real SELL_ITEM_RANGE = 300.
 		// The rate at which items' cost are refunded
 		private constant real SELL_ITEM_REFUND_RATE = 0.5
 		// The range at which the hero is from a shop and will ignore enemies in favor of buying items. 
-		//Only considered if the hero is not already in STATE_ENGAGED
+		// Only considered if the hero is not already in STATE_ENGAGED
         private constant real IGNORE_ENEMY_SHOP_RANGE = 600.  
 		// The max amount of items that can be in one itemset
 		private constant integer MAX_ITEMSET_SIZE = 12    
