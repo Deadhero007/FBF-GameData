@@ -172,7 +172,8 @@
 	endstruct
 	
 	globals
-		private boolean OnlyPowerUp     // Used to determine if the AI could only get power ups
+		// Used to determine if the AI could only get power ups
+		private boolean OnlyPowerUp     
 	endglobals
 	
 	private function AIItemFilter takes nothing returns boolean

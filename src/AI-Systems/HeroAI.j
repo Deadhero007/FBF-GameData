@@ -36,8 +36,31 @@ scope HeroAI
         public constant integer STATE_RUN_AWAY = 3
 
 		// Tracks the AI struct a hero has
-		private Table heroesAI  				
+		private Table heroesAI
+		
+		// Used to pass the shop type id of an item	
+		private integer ShopTypeId
+
+		// Used to refer to the AI hero for finding the closest safe unit
+		private player TempHeroOwner			
     endglobals
+	
+	// The function that determines what is a safe unit, like a fountain, for the hero to run to.
+	private function IsSafeUnit takes unit u, player heroOwner returns boolean
+    	return GetUnitTypeId(u) == 'n006'
+    endfunction
+	
+	private function ShopConditions takes unit u, player heroOwner returns boolean
+        return true
+    endfunction
+	
+	private function SafeUnitFilter takes nothing returns boolean
+		return IsSafeUnit(GetFilterUnit(), TempHeroOwner)
+	endfunction
+	
+	private function ShopTypeIdCheck takes nothing returns boolean
+		return GetUnitTypeId(GetFilterUnit()) == ShopTypeId and ShopConditions(GetFilterUnit(), TempHeroOwner)
+	endfunction
 	
 	//! runtextmacro HeroAILearnset()
 	//! runtextmacro HeroAIItem()
@@ -60,7 +83,9 @@ scope HeroAI
         private integer allyNum   
         private integer enemyNum
 		// Shop unit used internally
-		private unit shopUnit					
+		private unit shopUnit
+		private real runX
+        private real runY		
 		
 		// Used for creating
 		private static integer stack = 1
@@ -68,6 +93,24 @@ scope HeroAI
 		private static thistype tempthis
 		// Holds the state of the AI
 		private integer state
+		
+		private integer itemsetIndex
+		
+		method operator gold takes nothing returns integer
+    		return GetPlayerState(.owner, PLAYER_STATE_RESOURCE_GOLD)
+    	endmethod
+    	
+    	method operator gold= takes integer g returns nothing
+    		call SetPlayerState(.owner, PLAYER_STATE_RESOURCE_GOLD, g)
+    	endmethod
+    	
+    	method operator lumber takes nothing returns integer
+    		return GetPlayerState(.owner, PLAYER_STATE_RESOURCE_LUMBER)
+    	endmethod
+    	
+    	method operator lumber= takes integer l returns nothing
+    		call SetPlayerState(.owner, PLAYER_STATE_RESOURCE_LUMBER, l)
+    	endmethod
 		
 		method operator percentLife takes nothing returns real
             return .life / .maxLife
@@ -85,6 +128,27 @@ scope HeroAI
         	return 	.percentLife <= .35 or /*
 			*/	   	(.percentLife <= .55 and .mana / GetUnitState(.hero, UNIT_STATE_MAX_MANA) <= .3) or /*
 			*/		(.maxLife < 700 and .life <= 250.)      
+        endmethod
+		
+		method operator isChanneling takes nothing returns boolean
+            return IsUnitChanneling(.hero)
+        endmethod
+		
+		// Item-related methods
+      	method operator curItem takes nothing returns Item
+      		return .itemBuild.item(.itemsetIndex)
+      	endmethod
+		
+		private method canBuyItem takes Item it returns boolean
+            static if CHECK_REFUND_ITEM_COST then
+				local Item check
+				if .itemCount == MAX_INVENTORY_SIZE then
+					set check = Item[GetItemTypeId(UnitItemInSlot(.hero, ModuloInteger(.itemsetIndex, MAX_INVENTORY_SIZE)))]
+					return it.goldCost <= .gold + check.goldCost * SELL_ITEM_REFUND_RATE and it.lumberCost <= .lumber + check.lumberCost * SELL_ITEM_REFUND_RATE
+				endif
+            endif
+			
+        	return it.goldCost <= .gold and it.lumberCost <= .lumber
         endmethod
 		
 		private static method filtUnits takes nothing returns boolean
@@ -112,7 +176,7 @@ scope HeroAI
 		private method setRunSpot takes nothing returns nothing
         	local unit u 
 			
-        	/*set TempHeroOwner = .owner
+        	set TempHeroOwner = .owner
         	set u = GetClosestUnit(.hx, .hy, Filter(function SafeUnitFilter))
         	
         	if u == null then
@@ -121,13 +185,173 @@ scope HeroAI
         	
         	set .runX = GetUnitX(u)
 			set .runY = GetUnitY(u)
-			*/
+			
 			set u = null
         endmethod
 		
-		method defaultLoopActions takes nothing returns nothing
-			
+		private method refundItem takes Item it returns nothing
+            if it.goldCost > 0 then
+                set .gold = R2I(.gold + it.goldCost * SELL_ITEM_REFUND_RATE)
+            endif
+            
+            if it.lumberCost > 0 then
+                set .lumber = R2I(.lumber + it.lumberCost * SELL_ITEM_REFUND_RATE)
+            endif
+        endmethod
+        
+        private method buyItem takes Item it returns nothing
+            local item i
+            
+            if .itemCount == MAX_INVENTORY_SIZE then
+                set i = UnitItemInSlot(.hero, ModuloInteger(.itemsetIndex, MAX_INVENTORY_SIZE) )
+                if i != null then
+                    call .refundItem(Item[GetItemTypeId(i)])
+                    call RemoveItem(i)
+                    set i = null
+                endif
+            endif
+            
+            set .itemsetIndex = .itemsetIndex + 1
+            
+            // Set back to state idle now that the hero is done shopping.
+            if .state == STATE_GO_SHOP then
+                set .state = STATE_IDLE
+            endif     
+            
+        	if it.goldCost > 0 then
+				set .gold = .gold - it.goldCost
+            endif
+            
+            if it.lumberCost > 0 then
+            	set .lumber = .lumber - it.lumberCost
+            endif   
+            
+            call UnitAddItemById(.hero, it.typeId)        	
+        endmethod
+		
+		// Action methods
+		private method move takes nothing returns nothing      
+            call IssuePointOrder(.hero, "attack", .hx + GetRandomReal(-MOVE_DIST, MOVE_DIST), .hy + GetRandomReal(-MOVE_DIST, MOVE_DIST))
+        endmethod 
+        
+        private method run takes nothing returns boolean
+            return IssuePointOrder(.hero, "move", .runX + GetRandomReal(-SAFETY_RANGE/2, SAFETY_RANGE/2), .runY + GetRandomReal(-SAFETY_RANGE/2, SAFETY_RANGE/2) )
+        endmethod
+		
+		private method getItems takes nothing returns boolean
+        	set OnlyPowerUp = .itemCount == MAX_INVENTORY_SIZE
+            return IssueTargetOrder(.hero, "smart", GetClosestItemInRange(.hx, .hy, SIGHT_RANGE, Filter(function AIItemFilter)))
+        endmethod
+		
+		private method defaultAssaultEnemy takes nothing returns nothing
+			call IssueTargetOrder(.hero, "attack", GroupPickRandomUnit(.enemies))
 		endmethod
+		
+		// This method will be called by update periodically to check if the hero can do any shopping
+        private method canShop takes nothing returns nothing
+        	local Item it
+			
+        	loop
+				set it = .curItem
+				exitwhen not .canBuyItem(it) or .itemsetIndex == .itemBuild.size
+				if it.shopTypeId == 0 then
+                    call .buyItem(it)	                    
+				else
+					set ShopTypeId = it.shopTypeId
+                    set TempHeroOwner = .owner
+					set .shopUnit = GetClosestUnit(.hx, .hy, Filter(function ShopTypeIdCheck))
+					debug if .shopUnit == null then
+                        debug call BJDebugMsg("[Hero AI] Error: Null shop found for " + GetUnitName(.hero))
+                    debug endif
+                    if IsUnitInRange(.hero, .shopUnit, SELL_ITEM_RANGE) then
+						call .buyItem(it)
+					else
+						set .state = STATE_GO_SHOP
+						exitwhen true
+					endif
+				endif
+			endloop
+        endmethod
+		
+		method defaultLoopActions takes nothing returns nothing
+        	if .state == STATE_RUN_AWAY then
+        		// Make the hero keep running if it's not within range
+				if not IsUnitInRangeXY(.hero, .runX, .runY, SAFETY_RANGE) then
+					static if thistype.runActions.exists then
+						// Only run if no actions were taken in runActions.
+						if not .runActions() then
+							call .run()
+						endif
+					else
+						call .run()
+						debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_RUN_AWAY.")
+					endif
+				else
+					static if thistype.safeActions.exists then
+                    	call .safeActions()
+                    else
+						// Default looping actions for fighting so that the AI will try to do something at the safe spot.
+						if not .isChanneling then
+							static if thistype.assistAlly.exists then
+								if .allyNum > 0 then
+									if .assistAlly() then
+										return
+									endif
+								endif
+							endif
+							
+							if .enemyNum > 0 then
+								static if thistype.assaultEnemy.exists then
+									call .assaultEnemy()
+								else
+									call .defaultAssaultEnemy()
+								endif
+							endif
+						endif
+					endif
+				endif
+			else
+				if not .isChanneling then
+					static if thistype.assistAlly.exists then
+						if .allyNum > 0 then
+							if .assistAlly() then
+								return // Assisting an ally has precedence over anything else
+							endif
+						endif
+					endif
+					// Fight enemies if the hero is engaged
+					if .state == STATE_ENGAGED then
+						static if thistype.assaultEnemy.exists then
+							call .assaultEnemy()
+						else
+							call .defaultAssaultEnemy()
+							debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_ENGAGED.")
+						endif
+					else               
+						// Makes the hero try to get any nearby item before attempting to shop
+						if not .getItems() then
+							if .state == STATE_GO_SHOP then
+								// If the hero isn't in range of the shop, make it move there.
+								if not IsUnitInRange(.hero, .shopUnit, SELL_ITEM_RANGE) then
+									call IssuePointOrder(.hero, "move", GetUnitX(.shopUnit) + GetRandomReal(-SELL_ITEM_RANGE/2, SELL_ITEM_RANGE/2), GetUnitY(.shopUnit) + GetRandomReal(-SELL_ITEM_RANGE/2, SELL_ITEM_RANGE/2))
+								else
+									// Buys the item only if it was able to.
+                                    if .canBuyItem(.curItem) then
+                                        call .buyItem(.curItem)
+                                    else
+                                        set .state = STATE_IDLE
+                                    endif
+								endif
+							else
+								// STATE_IDLE, make the hero move around randomly
+								call .move()
+								debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_IDLE.")
+							endif
+						endif
+					endif
+				endif                      
+			endif
+        endmethod
 		
 		// Updates information about the hero and its surroundings
         method update takes nothing returns nothing
@@ -151,14 +375,14 @@ scope HeroAI
 			// state: IDLE
 			if (.goodCondition) then
 				set .state = STATE_IDLE
-				debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_IDLE.")
+				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_IDLE.")
 			endif
 			
 			// state: STATE_RUN_AWAY
 			if (.badCondition) then
 				set .state = STATE_RUN_AWAY
-				debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_RUN_AWAY.")
-				//call .setRunSpot()
+				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_RUN_AWAY.")
+				call .setRunSpot()
 			endif
 			
 			// state: STATE_ENGAGED
@@ -167,7 +391,12 @@ scope HeroAI
 			if 	((.enemyNum > 0 and .state == STATE_IDLE) or /*
 			*/	(.state == STATE_GO_SHOP and not IsUnitInRange(.hero, .shopUnit, IGNORE_ENEMY_SHOP_RANGE))) then
 				set .state = STATE_ENGAGED
-				debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_ENGAGED.")
+				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_ENGAGED.")
+			endif
+			
+			// Only check to do shopping if in the AI hasn't completed its itemset and it's in STATE_IDLE
+            if (.itemsetIndex < .itemBuild.size and .state == STATE_IDLE) then
+				call .canShop()
 			endif
 		endmethod
 
