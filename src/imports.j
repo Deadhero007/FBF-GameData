@@ -20,5 +20,8 @@
 //! import "src\AI-Systems\HeroAILearnset.j"
 //! import "src\AI-Systems\HeroAIItem.j"
 
+//! import "src\AI-Systems\HeroesAI\AbominationAI.j"
+
+
 
 

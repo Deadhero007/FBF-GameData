@@ -65,7 +65,7 @@ scope HeroAI
 	//! runtextmacro HeroAILearnset()
 	//! runtextmacro HeroAIItem()
 	
-	private module HeroAI
+	module HeroAI
 		private unit hero
     	private player owner
         private integer hId
