@@ -37,29 +37,33 @@ scope HeroAI
 
 		// Tracks the AI struct a hero has
 		private Table heroesAI
+		// Tracks custom AI structs defined for specific unit-type ids
+		private Table infoAI
+		// For registering an AI for a unit	
+		public unit registerUnit			
 		
 		// Used to pass the shop type id of an item	
-		private integer ShopTypeId
+		private integer shopTypeId
 
 		// Used to refer to the AI hero for finding the closest safe unit
-		private player TempHeroOwner			
+		private player tempHeroOwner			
     endglobals
 	
 	// The function that determines what is a safe unit, like a fountain, for the hero to run to.
-	private function IsSafeUnit takes unit u, player heroOwner returns boolean
+	private function isSafeUnit takes unit u, player heroOwner returns boolean
     	return GetUnitTypeId(u) == 'n006'
     endfunction
 	
-	private function ShopConditions takes unit u, player heroOwner returns boolean
+	private function shopConditions takes unit u, player heroOwner returns boolean
         return true
     endfunction
 	
-	private function SafeUnitFilter takes nothing returns boolean
-		return IsSafeUnit(GetFilterUnit(), TempHeroOwner)
+	private function safeUnitFilter takes nothing returns boolean
+		return isSafeUnit(GetFilterUnit(), tempHeroOwner)
 	endfunction
 	
-	private function ShopTypeIdCheck takes nothing returns boolean
-		return GetUnitTypeId(GetFilterUnit()) == ShopTypeId and ShopConditions(GetFilterUnit(), TempHeroOwner)
+	private function shopTypeIdCheck takes nothing returns boolean
+		return GetUnitTypeId(GetFilterUnit()) == shopTypeId and shopConditions(GetFilterUnit(), tempHeroOwner)
 	endfunction
 	
 	//! runtextmacro HeroAILearnset()
@@ -176,8 +180,8 @@ scope HeroAI
 		private method setRunSpot takes nothing returns nothing
         	local unit u 
 			
-        	set TempHeroOwner = .owner
-        	set u = GetClosestUnit(.hx, .hy, Filter(function SafeUnitFilter))
+        	set tempHeroOwner = .owner
+        	set u = GetClosestUnit(.hx, .hy, Filter(function safeUnitFilter))
         	
         	if u == null then
         		debug call BJDebugMsg("[HeroAI] Error: Couldn't find a safe unit for " + GetUnitName(.hero) + ", will run to (0, 0)")
@@ -243,7 +247,7 @@ scope HeroAI
             return IssueTargetOrder(.hero, "smart", GetClosestItemInRange(.hx, .hy, SIGHT_RANGE, Filter(function AIItemFilter)))
         endmethod
 		
-		private method defaultAssaultEnemy takes nothing returns nothing
+		method defaultAssaultEnemy takes nothing returns nothing
 			call IssueTargetOrder(.hero, "attack", GroupPickRandomUnit(.enemies))
 		endmethod
 		
@@ -257,9 +261,9 @@ scope HeroAI
 				if it.shopTypeId == 0 then
                     call .buyItem(it)	                    
 				else
-					set ShopTypeId = it.shopTypeId
-                    set TempHeroOwner = .owner
-					set .shopUnit = GetClosestUnit(.hx, .hy, Filter(function ShopTypeIdCheck))
+					set shopTypeId = it.shopTypeId
+                    set tempHeroOwner = .owner
+					set .shopUnit = GetClosestUnit(.hx, .hy, Filter(function shopTypeIdCheck))
 					debug if .shopUnit == null then
                         debug call BJDebugMsg("[Hero AI] Error: Null shop found for " + GetUnitName(.hero))
                     debug endif
@@ -429,6 +433,10 @@ scope HeroAI
 			set .t = NewTimerEx(this)
             call TimerStart(.t, DEFAULT_PERIOD, true, function thistype.defaultLoop)
 			
+			static if thistype.onCreate.exists then
+				call .onCreate()
+			endif
+			
 			if (GetHeroSkillPoints(.hero) > 0) then
 				loop
 					exitwhen lvl > GetUnitLevel(.hero)
@@ -436,11 +444,7 @@ scope HeroAI
 					set lvl = lvl + 1
 				endloop
 			endif
-
-			static if thistype.onCreate.exists then
-				call .onCreate()
-			endif
-
+			
 			set stack = stack + 1
 			set heroesAI[.hId] = this
 			
@@ -448,6 +452,17 @@ scope HeroAI
     		return this
 		endmethod
 	endmodule
+	
+	globals
+        private trigger fireTrigger = CreateTrigger()
+    endglobals
+    
+    // credits to Magtheridon96 for this function
+    private function FireCondition takes boolexpr b returns nothing
+        call TriggerClearConditions(fireTrigger)
+        call TriggerAddCondition(fireTrigger, b)
+        call TriggerEvaluate(fireTrigger)
+    endfunction
 	
 	private struct DefaultHeroAI extends array
     	implement HeroAI
@@ -458,12 +473,42 @@ scope HeroAI
             debug call BJDebugMsg("[Hero AI] Error: Attempt to run an AI for a unit that already has one, aborted.")
             return
         endif
-	
-		call DefaultHeroAI.create(hero)
+		
+		if infoAI.boolexpr[GetUnitTypeId(hero)] != null then
+        	set registerUnit = hero
+            call FireCondition(infoAI.boolexpr[GetUnitTypeId(hero)])
+        else
+            call DefaultHeroAI.create(hero)        
+        endif
 	endfunction
+	
+	function RegisterHeroAI takes integer unitTypeId, code register returns nothing
+        if infoAI.boolexpr[unitTypeId] != null then
+            debug call BJDebugMsg("[Hero AI] Error: Attempt to register an AI struct for a unit-type id again, aborted")
+            return
+        endif
+        set infoAI.boolexpr[unitTypeId] = Filter(register)
+    endfunction
+	
+	//! textmacro HeroAI_Register takes HERO_UNIT_TYPEID
+    private function RegisterAI takes nothing returns nothing          
+        call AI.create(HeroAI_registerUnit)
+    endfunction
+    
+    private module ModuleHack
+     	static method onInit takes nothing returns nothing
+     		call RegisterHeroAI($HERO_UNIT_TYPEID$, function RegisterAI)
+     	endmethod
+    endmodule    
+    
+    private struct StructHack extends array
+    	implement ModuleHack
+    endstruct
+    //! endtextmacro
 	
 	private module I 
         static method onInit takes nothing returns nothing
+			set infoAI = Table.create()
             set heroesAI = Table.create()            
         endmethod
     endmodule

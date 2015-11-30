@@ -10,6 +10,7 @@
         local unit u = GetTriggerUnit() 
         local integer typeId = GetUnitTypeId(u)
 		
+		call BJDebugMsg("Hero: " + GetUnitName(u))
 		call SelectHeroSkill(u, learnsetInfo[GetUnitLevel(u)][typeId])
 		
 		set u = null
@@ -30,6 +31,7 @@
 		
 		static method onInit takes nothing returns nothing            
             set learnsetInfo = thistype.create()
+
             call RegisterPlayerUnitEvent(EVENT_PLAYER_HERO_LEVEL, null, function learnSkills)
         endmethod
 	endstruct

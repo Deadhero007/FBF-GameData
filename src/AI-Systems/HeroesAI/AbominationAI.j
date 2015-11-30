@@ -6,8 +6,7 @@ scope AbominationAI
         private group enumGroup = CreateGroup()
     endglobals
     
-    private struct AI extends array        
-        
+    private struct AI extends array
         // The following two methods will print out debug messages only when the events
         // are enabled
         method onAttacked takes unit attacker returns nothing
@@ -20,11 +19,12 @@ scope AbominationAI
         
         method assaultEnemy takes nothing returns nothing  
             debug call BJDebugMsg("Abomination assault Enemy.")
+			call .defaultAssaultEnemy()
         endmethod
         
         // Cast wind walk if there's an enemy nearby
         method loopActions takes nothing returns nothing
-            
+            call .defaultLoopActions()
         endmethod
         
         // A custom periodic method is defined for this hero as the AI constantly
@@ -34,18 +34,9 @@ scope AbominationAI
 		endmethod
         
         method onCreate takes nothing returns nothing
-         
-        endmethod
-        
-        implement HeroAI        
-
-    endstruct
-	
-	private module A
-        private static method onInit takes nothing returns nothing
 			// Learnset Syntax:
 			// set RegisterHeroAISkill([UNIT-TYPE ID], [LEVEL OF HERO], SKILL ID)
-			
+			call BJDebugMsg("Registered Abilities for the Hero.")
 			// Cleave
 			call RegisterHeroAISkill(HERO_ID, 1, 'A06M')
 			call RegisterHeroAISkill(HERO_ID, 5, 'A06M') 
@@ -70,25 +61,20 @@ scope AbominationAI
 			call RegisterHeroAISkill(HERO_ID, 18, 'A06L')
 			//Heroes Will
 			call RegisterHeroAISkill(HERO_ID, 4, 'A021')
-		endmethod
-    endmodule
-
-    private module I
-        private static method onInit takes nothing returns nothing
+			
+			call BJDebugMsg("Register Items for the Hero.")
             set Itemsets[0] = HeroAI_Itemset.create()
-            call Itemsets[0].addItemTypeId('gcel')
-            call Itemsets[0].addItemTypeId('ratc') 
+            call Itemsets[0].addItemTypeId('I000')
+            call Itemsets[0].addItemTypeId('I001') 
             
             set Itemsets[1] = HeroAI_Itemset.create()
-            call Itemsets[1].addItemTypeId('rst1')
-            call Itemsets[1].addItemTypeId('rde3')    
+            call Itemsets[1].addItemTypeId('I003')
+            call Itemsets[1].addItemTypeId('I01R')    
         endmethod
-    endmodule
+        
+        implement HeroAI     
 
-    private struct S extends array
-		//Abilities
-		implement A
-		//Items
-        implement I
     endstruct
+	
+	//! runtextmacro HeroAI_Register("HERO_ID")
 endscope
