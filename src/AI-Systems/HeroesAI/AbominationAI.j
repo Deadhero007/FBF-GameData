@@ -10,15 +10,15 @@ scope AbominationAI
         // The following two methods will print out debug messages only when the events
         // are enabled
         method onAttacked takes unit attacker returns nothing
-            debug call BJDebugMsg("Abomination attacked by " + GetUnitName(attacker))
+            //debug call BJDebugMsg("Abomination attacked by " + GetUnitName(attacker))
         endmethod
         
         method onAcquire takes unit target returns nothing
-            debug call BJDebugMsg("Abomination acquires " + GetUnitName(target))
+            //debug call BJDebugMsg("Abomination acquires " + GetUnitName(target))
         endmethod
         
         method assaultEnemy takes nothing returns nothing  
-            debug call BJDebugMsg("Abomination assault Enemy.")
+            //debug call BJDebugMsg("Abomination assault Enemy.")
 			call .defaultAssaultEnemy()
         endmethod
         
@@ -36,7 +36,6 @@ scope AbominationAI
         method onCreate takes nothing returns nothing
 			// Learnset Syntax:
 			// set RegisterHeroAISkill([UNIT-TYPE ID], [LEVEL OF HERO], SKILL ID)
-			call BJDebugMsg("Registered Abilities for the Hero.")
 			// Cleave
 			call RegisterHeroAISkill(HERO_ID, 1, 'A06M')
 			call RegisterHeroAISkill(HERO_ID, 5, 'A06M') 
@@ -62,7 +61,6 @@ scope AbominationAI
 			//Heroes Will
 			call RegisterHeroAISkill(HERO_ID, 4, 'A021')
 			
-			call BJDebugMsg("Register Items for the Hero.")
             set Itemsets[0] = HeroAI_Itemset.create()
             call Itemsets[0].addItemTypeId('I000')
             call Itemsets[0].addItemTypeId('I001') 

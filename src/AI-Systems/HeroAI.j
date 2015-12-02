@@ -49,9 +49,44 @@ scope HeroAI
 		private player tempHeroOwner			
     endglobals
 	
+	// The function that determines if it's the Forsaken Heart
+	private function isForsakenHeart takes unit u returns boolean
+    	return GetUnitTypeId(u) == 'H014'
+	endfunction
+	
+	// The function that determines if it's a jump teleporter
+	private function isJumpTeleporter takes unit u returns boolean
+    	return GetUnitTypeId(u) == 'n007'
+	endfunction
+	
+	// The function that determines if it's a base teleporter (from or to the base)
+	private function isBaseTeleporter takes unit u returns boolean
+    	//To-Do: Make two different Unit-IDs to get the correct  base teleporter for each race
+		return GetUnitTypeId(u) == 'n00M'
+	endfunction
+	
+	// The function that determines if it's a shop
+	private function isShop takes unit u returns boolean
+    	// Forsaken Shops
+		if (GetUnitTypeId(u) == 'u000' or GetUnitTypeId(u) == 'u001' or GetUnitTypeId(u) == 'u003') then
+			return true
+		// Orc Shop
+		elseif (GetUnitTypeId(u) == 'u00N' or GetUnitTypeId(u) == 'u00O' or GetUnitTypeId(u) == 'u00P') then
+			return true
+		// Human Shops
+		elseif (GetUnitTypeId(u) == 'u00K' or GetUnitTypeId(u) == 'u00L' or GetUnitTypeId(u) == 'u00M') then
+			return true
+		// Nightelf Shops
+		elseif (GetUnitTypeId(u) == 'u00H' or GetUnitTypeId(u) == 'u00I' or GetUnitTypeId(u) == 'u00J') then
+			return true
+		else
+			return false
+		endif
+	endfunction
+	
 	// The function that determines what is a safe unit, like a fountain, for the hero to run to.
 	private function isSafeUnit takes unit u, player heroOwner returns boolean
-    	return GetUnitTypeId(u) == 'n006'
+    	return (GetUnitTypeId(u) == 'n006' or GetUnitTypeId(u) == 'n008')
     endfunction
 	
 	private function shopConditions takes unit u, player heroOwner returns boolean
@@ -86,7 +121,19 @@ scope HeroAI
         private group enemies       
         private integer allyNum   
         private integer enemyNum
+		
+		// The Forsaken Heart
+		private unit forsakenHeart
+		// Fountain
+		private unit safeUnit
+		// Jump Teleporter
+		private integer jumpTeleporterNum
+		private group jumpTeleporters
+		// Base Teleporter
+		private unit baseTeleporter
 		// Shop unit used internally
+		private integer shopNum
+		private group shops
 		private unit shopUnit
 		private real runX
         private real runY		
@@ -158,21 +205,48 @@ scope HeroAI
 		private static method filtUnits takes nothing returns boolean
             local unit u = GetFilterUnit()
 			
-            // Filter out dead units, the hero itself, and neutral units
+			// Filter out dead units, the hero itself, and neutral units
             if not SpellHelper.isUnitDead(u) and u != tempthis.hero then
-                // Filter unit is an ally
-                if SpellHelper.isValidEnemy(u, tempthis.hero) then
-                    call GroupAddUnit(tempthis.allies, u)
+                // Filter unit --> is an ally ???
+                if (SpellHelper.isValidAlly(u, tempthis.hero)) then
+                    debug call BJDebugMsg(GetUnitName(u) + " is an Ally!")
+					call GroupAddUnit(tempthis.allies, u)
                     set tempthis.allyNum = tempthis.allyNum + 1
-                // Filter unit is an enemy, only enum it if it's visible
-                elseif IsUnitVisible(u, tempthis.owner) then
-                    call GroupAddUnit(tempthis.enemies, u)
+                // Filter unit --> is an enemy, only enum it if it's visible???
+                elseif (SpellHelper.isValidEnemy(u, tempthis.hero) and IsUnitVisible(u, tempthis.owner)) then
+                    debug call BJDebugMsg(GetUnitName(u) + " is an Enemy!")
+					call GroupAddUnit(tempthis.enemies, u)
                     set tempthis.enemyNum = tempthis.enemyNum + 1
-                endif
+				// Filter unit --> is fountain???
+                elseif (isSafeUnit(u, GetOwningPlayer(tempthis.hero))) then
+					debug call BJDebugMsg(GetUnitName(u) + " is an Fountain!")
+					set tempthis.safeUnit = u
+				// Filter unit --> is a base teleporter???
+                elseif (isBaseTeleporter(u)) then
+					debug call BJDebugMsg(GetUnitName(u) + " is a Base Teleporter!")
+					set tempthis.baseTeleporter = u
+				// Filter unit --> is a jum teleporter???
+                elseif (isJumpTeleporter(u)) then
+					debug call BJDebugMsg(GetUnitName(u) + " is a Jump Teleporter!")
+					call GroupAddUnit(tempthis.jumpTeleporters, u)
+                    set tempthis.jumpTeleporterNum = tempthis.jumpTeleporterNum + 1
+				// Filter unit --> is a jum teleporter???
+                elseif (isForsakenHeart(u)) then
+					debug call BJDebugMsg(GetUnitName(u) + " is the Forsaken Heart!")
+					set tempthis.forsakenHeart = u
+				// Filter unit --> is a jum teleporter???
+                elseif (isShop(u)) then
+					debug call BJDebugMsg(GetUnitName(u) + " is a Shop!")
+					call GroupAddUnit(tempthis.shops, u)
+                    set tempthis.shopNum = tempthis.shopNum + 1
+				else
+					debug call BJDebugMsg(GetUnitName(u) + " is actualy not defined!")
+				endif
 				
                 set u = null
                 return true
             endif
+			
             set u = null
             return false
         endmethod
@@ -234,11 +308,13 @@ scope HeroAI
         endmethod
 		
 		// Action methods
-		private method move takes nothing returns nothing      
+		private method move takes nothing returns nothing
+			debug call BJDebugMsg("[HeroAI] Move around.")
             call IssuePointOrder(.hero, "attack", .hx + GetRandomReal(-MOVE_DIST, MOVE_DIST), .hy + GetRandomReal(-MOVE_DIST, MOVE_DIST))
         endmethod 
         
         private method run takes nothing returns boolean
+			debug call BJDebugMsg("[HeroAI] Run Away.")
             return IssuePointOrder(.hero, "move", .runX + GetRandomReal(-SAFETY_RANGE/2, SAFETY_RANGE/2), .runY + GetRandomReal(-SAFETY_RANGE/2, SAFETY_RANGE/2) )
         endmethod
 		
@@ -248,6 +324,7 @@ scope HeroAI
         endmethod
 		
 		method defaultAssaultEnemy takes nothing returns nothing
+			debug call BJDebugMsg("[HeroAI] Attack enemies.")
 			call IssueTargetOrder(.hero, "attack", GroupPickRandomUnit(.enemies))
 		endmethod
 		
@@ -288,7 +365,6 @@ scope HeroAI
 						endif
 					else
 						call .run()
-						debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_RUN_AWAY.")
 					endif
 				else
 					static if thistype.safeActions.exists then
@@ -329,7 +405,6 @@ scope HeroAI
 							call .assaultEnemy()
 						else
 							call .defaultAssaultEnemy()
-							debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_ENGAGED.")
 						endif
 					else               
 						// Makes the hero try to get any nearby item before attempting to shop
@@ -349,7 +424,6 @@ scope HeroAI
 							else
 								// STATE_IDLE, make the hero move around randomly
 								call .move()
-								debug call BJDebugMsg("[HeroAI] State: The hero " + GetUnitName(.hero) + " is in STATE_IDLE.")
 							endif
 						endif
 					endif
@@ -368,40 +442,28 @@ scope HeroAI
 			set .itemCount = UnitInventoryCount(.hero)
 			set tempthis = this
 			
-			// Group enumeration					
+			call ClearTextMessages()
+			debug call BJDebugMsg("***** UPDATE *****")
+			
+			// clear units
+			set .safeUnit = null
+			set .forsakenHeart = null
+			set .baseTeleporter = null
+			
+			// Group enumeration
+			call GroupClear(.units)
 			call GroupClear(.enemies)
 			call GroupClear(.allies)
+			call GroupClear(.jumpTeleporters)
 			set .enemyNum = 0
-			set .allyNum = 0			
+			set .allyNum = 0
+			set .jumpTeleporterNum = 0
 			call GroupEnumUnitsInRange(.units, .hx, .hy, SIGHT_RANGE, Filter(function thistype.filtUnits))
+			debug call BJDebugMsg("Amount Units in Group: " + I2S(CountUnitsInGroup(.units)))
 			
-			//Set the state of the hero
-			// state: IDLE
-			if (.goodCondition) then
-				set .state = STATE_IDLE
-				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_IDLE.")
-			endif
+			//State IDLE
 			
-			// state: STATE_RUN_AWAY
-			if (.badCondition) then
-				set .state = STATE_RUN_AWAY
-				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_RUN_AWAY.")
-				call .setRunSpot()
-			endif
 			
-			// state: STATE_ENGAGED
-			// NOTE: STATE_ENGAGED will only take precedence over STATE_GO_SHOP if the hero is not within 
-			// 		 IGNORE_ENEMY_SHOP_RANGE of the shop
-			if 	((.enemyNum > 0 and .state == STATE_IDLE) or /*
-			*/	(.state == STATE_GO_SHOP and not IsUnitInRange(.hero, .shopUnit, IGNORE_ENEMY_SHOP_RANGE))) then
-				set .state = STATE_ENGAGED
-				//debug call BJDebugMsg("[HeroAI] State: The current state of the hero " + GetUnitName(.hero) + " is STATE_ENGAGED.")
-			endif
-			
-			// Only check to do shopping if in the AI hasn't completed its itemset and it's in STATE_IDLE
-            if (.itemsetIndex < .itemBuild.size and .state == STATE_IDLE) then
-				call .canShop()
-			endif
 		endmethod
 
 		private static method defaultLoop takes nothing returns nothing
@@ -410,9 +472,9 @@ scope HeroAI
 			if not (SpellHelper.isUnitDead(.hero)) then
 				call .update()
 				static if thistype.loopActions.exists then
-					call .loopActions()
+					//call .loopActions()
 				else
-					call .defaultLoopActions()
+					//call .defaultLoopActions()
 				endif
 			endif
         endmethod
